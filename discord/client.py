@@ -346,6 +346,16 @@ class Client:
         log.debug('Dispatching event %s', event)
         method = 'on_' + event
 
+        self.dispatch_waiting_listeners(event, *args, **kwargs)
+
+        try:
+            coro = getattr(self, method)
+        except AttributeError:
+            pass
+        else:
+            self._schedule_event(coro, method, *args, **kwargs)
+
+    def dispatch_waiting_listeners(self, event: str, *args: Any, **kwargs: Any) -> None:
         listeners = self._listeners.get(event)
         if listeners:
             removed = []
@@ -374,13 +384,6 @@ class Client:
             else:
                 for idx in reversed(removed):
                     del listeners[idx]
-
-        try:
-            coro = getattr(self, method)
-        except AttributeError:
-            pass
-        else:
-            self._schedule_event(coro, method, *args, **kwargs)
 
     async def on_error(self, event_method: str, *args: Any, **kwargs: Any) -> None:
         """|coro|
